@@ -129,41 +129,6 @@ def print_table(table_name, fields, data):
         print_row(row)
     print_separator()
     print()
-    
-
-def main():
-    conexao, conn = conecta_BD()
-    opc = -1
-    while (opc != 0 and conexao == True):
-        print("1-Cadastro de informações contidas no CSV")
-        print("2-Listar todas as entidades")
-        print("3-Listar todas as linhas referentes à poluição na cidade")
-        print("4-Listar todas as linhas referentes à produção de plástico")
-        print("5-Listar todos os usuários")
-        print("0-Sair\n")
-
-        opc = int(input("Digite a opção desejada, ou 0 para sair: "))
-
-        if (opc == 1):
-            inserir_arquivos_csv(conn)
-        elif (opc == 2):
-            resposta = select(conn.cursor(), "entidade")
-            print_table("Entidade", tables["entidade"], resposta)
-        elif (opc == 3):
-            resposta = select(conn.cursor(), "poluicao_cidade")
-            print_table("Poluição na Cidade", tables["poluicao_cidade"], resposta)
-        elif (opc == 4):
-            resposta = select(conn.cursor(), "producao_plastico")
-            print_table("Produção de Plastico", tables["producao_plastico"], resposta)
-        elif (opc == 5):
-            resposta = select(conn.cursor(), "usuario")
-            print_table("Usuário", tables["usuario"], resposta)
-        elif (opc == 0):
-            print("Saindo...")
-        else:
-            print("Opção inválida. Tente novamente.")
-            
-        print("\n")
 
 
 def manipulating_dataframe_to_insert():
@@ -198,6 +163,101 @@ def manipulating_dataframe_to_insert():
     tabela_oracle = 'entidade'
 
     return [tabela_oracle, df_entidade]
+
+
+def main():
+    conexao, conn = conecta_BD()
+    opc = -1
+    while (opc != 0 and conexao == True):
+        print("1-Cadastro de informações contidas no CSV")
+        print("2-Listar todas as entidades")
+        print("3-Listar todas as linhas referentes à poluição na cidade")
+        print("4-Listar todas as linhas referentes à produção de plástico")
+        print("5-Listar todos os usuários")
+        print("6-Relatório de poluição na cidade, ordenado descrescente pela qualidade do ar")
+        print("7-Relatório de poluição em cidades que começam com a letra B entre 2015 e 2020 e com qualidade de ar entre 80 e 100")
+        print("8-Relatório de poluição de cidades")
+        print("9-Relatório utilizando função de data")
+        print("10-Relatório de entidades pertencentes a grupos")
+        print("11-Relatório de entidades e suas participações em emissão de plastico nos oceanos")
+        print("12-Relatório de Lixo Mal Gerido")
+        print("0-Sair\n")
+
+        try:
+            opc = int(input("Digite a opção desejada, ou 0 para sair: "))
+            print("\n")
+        except ValueError:
+            opc = -1
+
+        if (opc == 1):
+            inserir_arquivos_csv(conn)
+        elif (opc == 2):
+            resposta = select(conn.cursor(), "entidade")
+            print_table("Entidade", tables["entidade"], resposta)
+        elif (opc == 3):
+            resposta = select(conn.cursor(), "poluicao_cidade")
+            print_table("Poluição na Cidade", tables["poluicao_cidade"], resposta)
+        elif (opc == 4):
+            resposta = select(conn.cursor(), "producao_plastico")
+            print_table("Produção de Plastico", tables["producao_plastico"], resposta)
+        elif (opc == 5):
+            resposta = select(conn.cursor(), "usuario")
+            print_table("Usuário", tables["usuario"], resposta)
+        elif (opc == 6):
+            resposta = select(
+                conn.cursor(),
+                "poluicao_cidade",
+                fields="nome, cidade, regiao, qualidade_ar",
+                order_by="qualidade_ar desc",
+                join="inner join entidade on entidade.entidade_id = poluicao_cidade.entidade_id"
+            )
+            print_table("Poluição na Cidade", ["nome", "cidade", "regiao", "qualidade_ar"], resposta)
+        elif (opc == 7):
+            resposta = select(
+                conn.cursor(),
+                "poluicao_cidade",
+                where="cidade like 'B%' and ano between 2015 and 2020 and qualidade_ar between 80 and 100",
+            )
+            print_table("Poluição na Cidade", tables["poluicao_cidade"], resposta)
+        elif (opc == 8):
+            resposta = select(conn.cursor(), "poluicao_cidade", fields="cidade, upper(cidade)")
+            print_table("Poluição na Cidade", ["cidade", "upper(cidade)"], resposta)
+        elif (opc == 9):
+            #N funcionou
+            resposta = select(conn.cursor(), "poluicao_cidade", fields="extract(YEAR from ano) AS ano, AVG(qualidade_ar) AS media_poluicao_ar")
+            print_table("Poluição na Cidade", ["ano", "media_poluicao_ar"], resposta)
+        elif (opc == 10):
+            resposta = select(
+                conn.cursor(),
+                "entidade",
+                fields="grupo, count(grupo)\"QUANTAS ENTIDADES PERTENCE A GRUPOS? (0-NÃO/1-SIM)\"",
+                group_by="grupo"
+            )
+            print_table("Entidade", ["está em grupo?", "contagem"], resposta)
+        elif (opc == 11):
+            resposta = select(
+                conn.cursor(),
+                "poluicao_cidade pc",
+                fields="nome \"NOME ENTIDADE\", cidade, regiao, partici_emissao_oceanos",
+                order_by="partici_emissao_oceanos desc",
+                join="inner join entidade e on e.entidade_id = pc.entidade_id inner join producao_plastico pp on pp.entidade_id = pc.entidade_id",
+            )
+            print_table("Relatório de Emissão de Plastico", ["NOME ENTIDADE", "cidade", "regiao", "partici_emissao_oceanos (%)"], resposta)
+        elif (opc == 12):
+            resposta = select(
+                conn.cursor(),
+                "poluicao_cidade pc",
+                fields="e.nome \"ENTIDADE NOME\", e.codigo \"ENTIDADE CODIGO\", pc.cidade, pc.regiao, pc.ano, pc.qualidade_ar, pc.poluicao_agua, pp.partici_lixo_mal_gerido",
+                order_by="partici_lixo_mal_gerido desc",
+                join="left join entidade e on pc.entidade_id = e.entidade_id left join producao_plastico pp on pc.entidade_id = pp.entidade_id and pc.ano = pp.ano",
+            )
+            print_table("Relatório de Lixo Mal Gerido", ["ENTIDADE NOME", "ENTIDADE CODIGO", "CIDADE", "REGIAO", "ANO", "QUALIDADE_AR", "POLUICAO_AGUA", "PARTICI_LIXO_MAL_GERIDO"], resposta)
+        elif (opc == 0):
+            print("Saindo...")
+        else:
+            print("Opção inválida. Tente novamente.")
+            
+        print("\n")
 
 
 if (__name__ == "__main__"):
