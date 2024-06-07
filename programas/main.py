@@ -223,8 +223,12 @@ def main():
             resposta = select(conn.cursor(), "poluicao_cidade", fields="cidade, upper(cidade)")
             print_table("Poluição na Cidade", ["cidade", "upper(cidade)"], resposta)
         elif (opc == 9):
-            #N funcionou
-            resposta = select(conn.cursor(), "poluicao_cidade", fields="extract(YEAR from ano) AS ano, AVG(qualidade_ar) AS media_poluicao_ar")
+            resposta = select(
+                conn.cursor(),
+                "poluicao_cidade",
+                fields="extract(year from to_date(ano, 'yyyy')) AS ano, avg(qualidade_ar) AS media_poluicao_ar",
+                group_by="extract(year from to_date(ano, 'yyyy'))"
+            )
             print_table("Poluição na Cidade", ["ano", "media_poluicao_ar"], resposta)
         elif (opc == 10):
             resposta = select(
